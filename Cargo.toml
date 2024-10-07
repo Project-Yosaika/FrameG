@@ -1,0 +1,14 @@
+[package]
+name = "frameg"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "frameg"
+path = "src/lib.rs"
+
+[dependencies]
+eframe = "0.29.1"
+egui_extras = { version = "0.29.1", features = ["default", "all_loaders"] }
+ron = "0.8.1"
+serde = { version = "1.0.210", features = ["derive"] }

@@ -1,0 +1,36 @@
+Story(
+    id: "Test",
+    content: {
+        (None, 0): [
+            Bg("forest", 3),
+            Character(Character(
+                name: "girl",
+                face: "stand",
+                pos: (500.0, 600.0),
+                scale: (500.0, 500.0)
+            ), 3),
+            SimpleText("Hi, Hi", CharacterName(name: "A girl"))
+        ],
+        (None, 1): [
+            SimpleText("Hi!!!Hi!!!Hi!!!", CharacterName(name: "A girl"))
+        ],
+        (Some(Branch((
+            Some(Choice(
+                text: "Say Hi",
+                next_story: "Talk Test"
+            )),
+            Some(Choice(
+                text: "Say goodbye",
+                next_story: "Fast Fin"
+            )),
+            Some(Choice(
+                text: "Keep Slient",
+                next_story: "You are so Cool"
+            )),
+            None,
+            None
+        ))), 2): [
+            SimpleText("Make a choice", CharacterName(name: "Your mind"))
+        ]
+    }
+)

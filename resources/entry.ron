@@ -1,0 +1,52 @@
+FramegEntry(
+    name: "Test for YOU",
+    has_multi_story: false,
+    ui: Ui(
+        main_menu: MainMenu(
+            new_button_position: (600.0, 100.0),
+            continue_button_position: (600.0, 200.0),
+            gallery_button_position: (600.0, 300.0),
+            setting_button_position: (600.0, 400.0),
+            quit_button_position: (600.0, 500.0),
+            new_button_scale: (360.0, 72.0),
+            continue_button_scale: (360.0, 72.0),
+            gallery_button_scale: (360.0, 72.0),
+            setting_button_scale: (360.0, 72.0),
+            quit_button_scale: (360.0, 72.0),
+            new_text_size: 42.0,
+            continue_text_size: 42.0,
+            gallery_text_size: 42.0,
+            setting_text_size: 42.0,
+            quit_text_size: 42.0
+        ),
+        settings_menu: SettingsMenu(
+            character_volume_position: (300.0, 200.0),
+            sound_effect_volume_position: (300.0, 400.0),
+            music_volume_position: (300.0, 600.0),
+            text_playback_speed_position: (300.0, 800.0),
+            character_volume_scale: (600.0, 100.0),
+            sound_effect_volume_scale: (600.0, 100.0),
+            music_volume_scale: (600.0, 100.0),
+            text_playback_speed_scale: (600.0, 100.0),
+            window_scale: FullScreen,
+            window_scale_button_position: (80.0, 220.0),
+            window_scale_button_scale: (70.0, 15.0),
+            reset_button_position: (1000.0, 770.0),
+            reset_button_scale: (260.0, 60.0),
+            reset_button_text_scale: 28.0,
+            back_button_position: (1300.0, 770.0),
+            back_button_scale: (260.0, 60.0),
+            back_button_text_scale: 28.0
+        ),
+        in_game_hud: InGameHud(
+            dialog_box_position: (350.0, 730.0),
+            dialog_box_scale: (1.0, 1.0),
+            dialog_text_position: (470.0, 700.0),
+            dialog_text_scale: 50.0,
+            character_name_position: (500.0, 640.0),
+            character_name_size: 36.0,
+            save_button_position: (100.0, 100.0),
+            history_button_position: (100.0, 100.0),
+        )
+    )
+)
