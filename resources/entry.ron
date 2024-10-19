@@ -20,10 +20,10 @@ FramegEntry(
             quit_text_size: 42.0
         ),
         settings_menu: SettingsMenu(
-            character_volume_position: (300.0, 200.0),
-            sound_effect_volume_position: (300.0, 400.0),
-            music_volume_position: (300.0, 600.0),
-            text_playback_speed_position: (300.0, 800.0),
+            character_volume_position: (300.0, 300.0),
+            sound_effect_volume_position: (300.0, 600.0),
+            music_volume_position: (300.0, 900.0),
+            text_playback_speed_position: (300.0, 1200.0),
             character_volume_scale: (600.0, 100.0),
             sound_effect_volume_scale: (600.0, 100.0),
             music_volume_scale: (600.0, 100.0),

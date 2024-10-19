@@ -1,6 +1,6 @@
 use std::{borrow::Cow, path::PathBuf, str::FromStr};
 
-use eframe::egui::{self, include_image, Area, Button, ComboBox, Context, DragValue, Image, ImageSource, InnerResponse, Label, LayerId, Order, Pos2, Rect, Response, RichText, Sense, Slider, TextWrapMode, Ui, Vec2, Widget, WidgetText};
+use eframe::egui::{self, include_image, Align, Area, Button, ComboBox, Context, DragValue, Id, Image, ImageSource, InnerResponse, Label, LayerId, Order, Pos2, Rect, Response, RichText, Sense, Slider, TextWrapMode, Ui, Vec2, Widget, WidgetText};
 
 use crate::WindowScale;
 
@@ -9,13 +9,16 @@ pub fn create_button(text: RichText, ui: &mut Ui, pos: (f32, f32), size: (f32, f
     ui.put(Rect::from_min_size(Pos2::new(pos.0, pos.1), Vec2::new(size.0, size.1)), button)
 }
 
-pub fn create_slider(ui: &mut Ui, pos: (f32, f32), size: (f32, f32), default_value: &mut i32) -> Response {
-    ui.spacing_mut().slider_width = size.0;
-
-    let slider = Slider::new(default_value, 0..=100).show_value(false);
+pub fn create_slider(ctx: &Context, id: String, pos: (f32, f32), size: (f32, f32), default_value: &mut i32) {
+    Area::new(id.into()).default_pos(pos).default_size(size).show(ctx, |ui| {
+        ui.spacing_mut().slider_width = size.0;
+        
+        let slider = Slider::new(default_value, 0..=100).show_value(false);
     // ui.put(Rect::from_pos(Pos2::new(pos.0, pos.1)), Label::new(simple_text("0", 20.0)).wrap_mode(TextWrapMode::Wrap));
     // ui.put(Rect::from_pos(Pos2::new(pos.0 + size.0, pos.1)), Label::new(simple_text("100", 20.0)));
-    ui.put(Rect::from_pos(Pos2::new(pos.0, pos.1)), slider)
+    
+        slider.ui(ui);
+    });
 }
 
 pub fn create_drag_value(ui: &mut Ui, pos: (f32, f32), size: (f32, f32), mut default_value: f32) -> Response {
@@ -69,7 +72,7 @@ pub fn area(ctx: &Context, uri: &str, pos: (f32, f32), size: (f32, f32), affect:
 
 pub fn show_text(ui: &mut Ui, text: &str, size: f32, pos: (f32, f32), affect: f32, extend: bool) -> Response {
     let label = if extend {
-        Label::new(simple_text(text, size * affect)).selectable(false).extend()
+        Label::new(simple_text(text, size * affect)).extend().halign(Align::Center).selectable(false)
     } else {
         Label::new(simple_text(text, size * affect)).selectable(false)
     };

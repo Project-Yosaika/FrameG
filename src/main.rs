@@ -1,11 +1,12 @@
 use std::borrow::Cow;
+use std::collections::HashMap;
 use std::fs::{self, File};
 use std::io::{Read, Write};
 use std::time;
 
 use eframe::*;
 use eframe::egui::*;
-use frameg::StoryController;
+use frameg::{Character, StoryController};
 use frameg::util::{area, bg_uri, character_uri, create_button, create_slider, image, show_text, simple_text, type_text, ui_image, ui_uri};
 use frameg::{Config, FramegEntry, Story, StoryComponent, WindowScale};
 use ron::de::from_reader;
@@ -93,7 +94,9 @@ struct FramegInstance<'a> {
     state: GameStates,
     zoom_effect: f32,
     read_process: usize,
-    text_play_process: f32
+    text_play_process: f32,
+    character_drawer: HashMap<usize, Character>,
+    bg_drawer: HashMap<usize, String>
 }
 
 impl<'a> FramegInstance<'a> {
@@ -108,7 +111,9 @@ impl<'a> FramegInstance<'a> {
             state: GameStates::MainMenu,
             zoom_effect: 1.0,
             read_process: 0,
-            text_play_process: 0.0
+            text_play_process: 0.0,
+            character_drawer: HashMap::default(),
+            bg_drawer: HashMap::default()
         }
     }
 }
@@ -232,7 +237,8 @@ impl<'a> eframe::App for FramegInstance<'a> {
                         }
                     );
                     create_slider(
-                        ui, 
+                        ctx,
+                        "character_volume".to_string(), 
                         (self.entry.ui.settings_menu.character_volume_position.0 * self.zoom_effect,
                             self.entry.ui.settings_menu.character_volume_position.0 * self.zoom_effect
                         ),
@@ -242,7 +248,8 @@ impl<'a> eframe::App for FramegInstance<'a> {
                         &mut self.config.character_volume
                     );
                     create_slider(
-                        ui, 
+                        ctx, 
+                        "sound_effect".to_string(),
                         (self.entry.ui.settings_menu.sound_effect_volume_position.0 * self.zoom_effect,
                             self.entry.ui.settings_menu.sound_effect_volume_position.0 * self.zoom_effect
                         ),
@@ -252,7 +259,8 @@ impl<'a> eframe::App for FramegInstance<'a> {
                         &mut self.config.sound_effect_volume
                     );
                     create_slider(
-                        ui, 
+                        ctx,
+                        "text_playback_speed".to_string(), 
                         (self.entry.ui.settings_menu.text_playback_speed_position.0 * self.zoom_effect,
                             self.entry.ui.settings_menu.text_playback_speed_position.0 * self.zoom_effect
                         ),
@@ -262,12 +270,13 @@ impl<'a> eframe::App for FramegInstance<'a> {
                         &mut self.config.text_playback_speed
                     );
                     create_slider(
-                        ui, 
-                        (self.entry.ui.settings_menu.character_volume_position.0 * self.zoom_effect,
-                            self.entry.ui.settings_menu.character_volume_position.0 * self.zoom_effect
+                        ctx,
+                        "music_volume".to_string(), 
+                        (self.entry.ui.settings_menu.music_volume_scale.0 * self.zoom_effect,
+                            self.entry.ui.settings_menu.music_volume_scale.0 * self.zoom_effect
                         ),
-                        (self.entry.ui.settings_menu.character_volume_scale.0 * self.zoom_effect,
-                            self.entry.ui.settings_menu.character_volume_scale.0 * self.zoom_effect
+                        (self.entry.ui.settings_menu.music_volume_scale.0 * self.zoom_effect,
+                            self.entry.ui.settings_menu.music_volume_scale.0 * self.zoom_effect
                         ), 
                         &mut self.config.character_volume
                     );
@@ -284,7 +293,7 @@ impl<'a> eframe::App for FramegInstance<'a> {
                         )
                     );
                     let back = create_button(
-                        simple_text("Quit", self.entry.ui.settings_menu.back_button_text_scale * self.zoom_effect), 
+                        simple_text("Back", self.entry.ui.settings_menu.back_button_text_scale * self.zoom_effect), 
                         ui,
                         (
                             self.entry.ui.settings_menu.back_button_position.0 * self.zoom_effect,
@@ -328,6 +337,20 @@ impl<'a> eframe::App for FramegInstance<'a> {
                     if ctx.input(|i| i.key_pressed(Key::Enter)) {
                         self.read_process += 1;
                         self.text_play_process = 0.0;
+                        self.character_drawer = self.character_drawer.iter().filter_map(|m| {
+                            if m.0 > &0 {
+                                Some((m.0 - 1, m.1.clone()))
+                            } else {
+                                None
+                            }
+                        }).collect();
+                        self.bg_drawer = self.bg_drawer.iter().filter_map(|m| {
+                            if m.0 > &0 {
+                                Some((m.0 - 1, m.1.clone()))
+                            } else {
+                                None
+                            }
+                        }).collect();
                     }
 
                     area(
@@ -344,60 +367,68 @@ impl<'a> eframe::App for FramegInstance<'a> {
 
                         controllers.iter().for_each(|controller| {
                             if controller.1 == self.read_process {
-                                let component = single_story.content.get(&controller).unwrap();
-                                component.iter().for_each(|part| {
-                                    if controller.0.is_some() {
-                                        let c = controller.0.as_ref().unwrap();
-                                        match c {
-                                            StoryController::Branch(choice_list) => {
-                                                let choices: Vec<_> = choice_list.iter().filter(|f| f.is_some()).map(|m| m.clone().unwrap()).collect();
-                                                for i in 0..=choices.len() - 1 {
-                                                    ui.label(choices.get(i).unwrap().text.clone());
-                                                }
+                                single_story.content.get(&controller).iter().for_each(|component| {
+                                    component.iter().for_each(|part| {
+                                        if controller.0.is_some() {
+                                            let c = controller.0.as_ref().unwrap();
+                                            match c {
+                                                StoryController::Branch(choice_list) => {
+                                                    let choices: Vec<_> = choice_list.iter().filter(|f| f.is_some()).map(|m| m.clone().unwrap()).collect();
+                                                    for i in 0..=choices.len() - 1 {
+                                                        ui.label(choices.get(i).unwrap().text.clone());
+                                                    }
+                                                },
+                                                StoryController::Next(_) => todo!(),
+                                                StoryController::If(story_lock, next_story) => todo!(),
+                                                StoryController::End => {
+                                                    self.state = GameStates::MainMenu
+                                                },
+                                            }
+                                        }
+    
+                                        match part {
+                                            StoryComponent::SimpleText(text, said_by) => {
+                                                Area::new("texts".into()).order(Order::Tooltip).show(ctx, |ui| {
+                                                    show_text(
+                                                        ui,
+                                                        &said_by.name,
+                                                        self.entry.ui.in_game_hud.character_name_size,
+                                                        self.entry.ui.in_game_hud.character_name_position,
+                                                        self.zoom_effect,
+                                                        true
+                                                    );
+                                                    type_text(
+                                                        ui,
+                                                        &text,
+                                                        self.entry.ui.in_game_hud.dialog_text_position,
+                                                        self.entry.ui.in_game_hud.dialog_text_scale,
+                                                        self.zoom_effect,
+                                                        self.text_play_process as usize
+                                                    );
+                                                });
                                             },
-                                            StoryController::Next(_) => todo!(),
-                                            StoryController::If(story_lock, next_story) => todo!(),
-                                            StoryController::End => {
-                                                self.state = GameStates::MainMenu
+                                            StoryComponent::Bg(pointer, last) => {
+                                                self.bg_drawer.insert(*last, pointer.to_string());
+                                            },
+                                            StoryComponent::Cg(_, _) => todo!(),
+                                            StoryComponent::ScreenFX(_, _) => todo!(),
+                                            StoryComponent::Character(character, last) => {
+                                                self.character_drawer.insert(*last, character.clone());
                                             },
                                         }
-                                    }
+                                    });
 
-                                    match part {
-                                        StoryComponent::SimpleText(text, said_by) => {
-                                            Area::new("texts".into()).order(Order::Tooltip).show(ctx, |ui| {
-                                                show_text(
-                                                    ui,
-                                                    &said_by.name,
-                                                    self.entry.ui.in_game_hud.character_name_size,
-                                                    self.entry.ui.in_game_hud.character_name_position,
-                                                    self.zoom_effect,
-                                                    true
-                                                );
-                                                type_text(
-                                                    ui,
-                                                    &text,
-                                                    self.entry.ui.in_game_hud.dialog_text_position,
-                                                    self.entry.ui.in_game_hud.dialog_text_scale,
-                                                    self.zoom_effect,
-                                                    self.text_play_process as usize
-                                                );
-                                            });
-                                        },
-                                        StoryComponent::SpecialText(_, _) => todo!(),
-                                        StoryComponent::Bg(pointer, _) => {
-                                            Area::new("background".into()).fade_in(false).order(Order::Background).default_pos((0.0, 0.0)).default_size((500.0 * self.zoom_effect, 500.0 * self.zoom_effect)).show(ctx, |ui| {
-                                                ui.image(image(&bg_uri(&pointer)));
-                                            });
-                                        },
-                                        StoryComponent::Cg(_, _) => todo!(),
-                                        StoryComponent::ScreenFX(_, _) => todo!(),
-                                        StoryComponent::Character(character, _) => {
-                                            Area::new("characters".into()).order(Order::Middle).current_pos(character.pos).default_size(character.scale).show(ctx, |ui| {
-                                                ui.image(image(&character_uri(&character.name, &character.face)));
-                                            });
-                                        },
-                                    }
+                                    self.bg_drawer.iter().for_each(|c| {
+                                        if c.0 > &0 {
+                                            Image::new(image(&bg_uri(c.1))).paint_at(ui, Rect::from_min_size(Pos2::new(0.0, 0.0), Vec2::new(1600.0 * self.zoom_effect, 900.0 * self.zoom_effect)));
+                                        }
+                                    });
+                                    self.character_drawer.iter().for_each(|c| {
+                                        if c.0 > &0 {
+                                            let character = c.1;
+                                            Image::new(image(&character_uri(&character.name, &character.face))).paint_at(ui, Rect::from_min_size(Pos2::new(character.pos.0 * self.zoom_effect, character.pos.1 * self.zoom_effect),Vec2::new(character.scale.0 * self.zoom_effect, character.scale.1 * self.zoom_effect)));
+                                        }
+                                    });
                                 });
                             }
                         });

@@ -6,9 +6,9 @@ Story(
             Character(Character(
                 name: "girl",
                 face: "stand",
-                pos: (500.0, 600.0),
-                scale: (500.0, 500.0)
-            ), 3),
+                pos: (500.0, 200.0),
+                scale: (900.0, 1200.0)
+            ), 2),
             SimpleText("Hi, Hi", CharacterName(name: "A girl"))
         ],
         (None, 1): [

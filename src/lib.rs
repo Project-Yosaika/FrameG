@@ -87,11 +87,15 @@ pub struct Story {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum StoryComponent {
     SimpleText(String, CharacterName),
-    SpecialText(String, CharacterName),
     Bg(String, usize),
     Cg(String, usize),
     ScreenFX(String, usize),
     Character(Character, usize)
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub enum TextComponents {
+    RichText(String)
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
