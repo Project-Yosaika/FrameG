@@ -227,6 +227,10 @@ impl<'a> eframe::App for FramegInstance<'a> {
                 GameStates::Gallery => todo!(),
                 GameStates::Settings => {
                     ui.label("Screen size:");
+                    
+                    ui.spacing_mut().combo_width = self.entry.ui.settings_menu.window_scale_button_scale.0;
+                    ui.spacing_mut().combo_height = self.entry.ui.settings_menu.window_scale_button_scale.1;
+                    
                     ComboBox::from_label("")
                         .selected_text(format!("{:?}", self.config.window_scale))
                         .show_ui(ui, |ui| {
@@ -387,26 +391,6 @@ impl<'a> eframe::App for FramegInstance<'a> {
                                         }
     
                                         match part {
-                                            StoryComponent::SimpleText(text, said_by) => {
-                                                Area::new("texts".into()).order(Order::Tooltip).show(ctx, |ui| {
-                                                    show_text(
-                                                        ui,
-                                                        &said_by.name,
-                                                        self.entry.ui.in_game_hud.character_name_size,
-                                                        self.entry.ui.in_game_hud.character_name_position,
-                                                        self.zoom_effect,
-                                                        true
-                                                    );
-                                                    type_text(
-                                                        ui,
-                                                        &text,
-                                                        self.entry.ui.in_game_hud.dialog_text_position,
-                                                        self.entry.ui.in_game_hud.dialog_text_scale,
-                                                        self.zoom_effect,
-                                                        self.text_play_process as usize
-                                                    );
-                                                });
-                                            },
                                             StoryComponent::Bg(pointer, last) => {
                                                 self.bg_drawer.insert(*last, pointer.to_string());
                                             },
@@ -414,6 +398,25 @@ impl<'a> eframe::App for FramegInstance<'a> {
                                             StoryComponent::ScreenFX(_, _) => todo!(),
                                             StoryComponent::Character(character, last) => {
                                                 self.character_drawer.insert(*last, character.clone());
+                                            },
+                                            StoryComponent::SimpleText(text, said_by) => {
+                                                show_text(
+                                                    ui,
+                                                    &said_by.name,
+                                                    self.entry.ui.in_game_hud.character_name_size,
+                                                    self.entry.ui.in_game_hud.character_name_position,
+                                                    self.zoom_effect,
+                                                    true
+                                                );
+                                                Area::new("texts".into()).default_pos(self.entry.ui.in_game_hud.dialog_text_position).order(Order::TOP).show(ctx, |ui| {
+                                                    type_text(
+                                                        ui,
+                                                        &text,
+                                                        self.entry.ui.in_game_hud.dialog_text_scale,
+                                                        self.zoom_effect,
+                                                        self.text_play_process as usize
+                                                    );
+                                                });
                                             },
                                         }
                                     });

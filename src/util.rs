@@ -1,6 +1,6 @@
-use std::{borrow::Cow, path::PathBuf, str::FromStr};
+use std::{borrow::Cow, path::PathBuf, str::FromStr, time};
 
-use eframe::egui::{self, include_image, Align, Area, Button, ComboBox, Context, DragValue, Id, Image, ImageSource, InnerResponse, Label, LayerId, Order, Pos2, Rect, Response, RichText, Sense, Slider, TextWrapMode, Ui, Vec2, Widget, WidgetText};
+use eframe::egui::{self, include_image, Align, Align2, Area, Button, ComboBox, Context, DragValue, FontId, Id, Image, ImageSource, InnerResponse, Label, LayerId, Layout, Order, Pos2, Rect, Response, RichText, Sense, Slider, TextWrapMode, Ui, Vec2, Widget, WidgetText};
 
 use crate::WindowScale;
 
@@ -10,7 +10,7 @@ pub fn create_button(text: RichText, ui: &mut Ui, pos: (f32, f32), size: (f32, f
 }
 
 pub fn create_slider(ctx: &Context, id: String, pos: (f32, f32), size: (f32, f32), default_value: &mut i32) {
-    Area::new(id.into()).default_pos(pos).default_size(size).show(ctx, |ui| {
+    Area::new(id.into()).default_pos(pos).default_size((1600.0, 900.0)).show(ctx, |ui| {
         ui.spacing_mut().slider_width = size.0;
         
         let slider = Slider::new(default_value, 0..=100).show_value(false);
@@ -19,11 +19,6 @@ pub fn create_slider(ctx: &Context, id: String, pos: (f32, f32), size: (f32, f32
     
         slider.ui(ui);
     });
-}
-
-pub fn create_drag_value(ui: &mut Ui, pos: (f32, f32), size: (f32, f32), mut default_value: f32) -> Response {
-    let slider = DragValue::new(&mut default_value).range(0..=100);
-    ui.put(Rect::from_min_size(Pos2::new(pos.0, pos.1), Vec2::new(size.0, size.1)), slider)
 }
 
 pub fn simple_text(text: &str, size: f32) -> RichText {
@@ -80,21 +75,12 @@ pub fn show_text(ui: &mut Ui, text: &str, size: f32, pos: (f32, f32), affect: f3
     ui.put(Rect::from_pos(Pos2::new(pos.0 * affect, pos.1 * affect)), label)
 }
 
-pub fn type_text(ui: &mut Ui, text: &str, pos: (f32, f32), size: f32, affect: f32, time: usize) {
-    // let r = 0..=text.len();
-
-    // r.into_iter().for_each(|i| {
-    //     if i == time {
-    //         let type_out = &text[0..i];
-    //         let label = Label::new(simple_text(&type_out, size * affect)).selectable(false).extend();
-    //         ui.put(Rect::from_pos(Pos2::new(pos.0 * affect, pos.1 * affect)), label);
-    //     } else if i >= time {
-    //         let type_out = &text[0..text.len()];
-    //         let label = Label::new(simple_text(&type_out, size * affect)).selectable(false).extend();
-    //         ui.put(Rect::from_pos(Pos2::new(pos.0 * affect, pos.1 * affect)), label);
-    //     }
-    // });
-    let type_out = &text[0..text.len()];
+pub fn type_text(ui: &mut Ui, text: &str, size: f32, affect: f32, speed: usize) {
+    let type_out = text;
     let label = Label::new(simple_text(&type_out, size * affect)).selectable(false).extend();
-    ui.put(Rect::from_pos(Pos2::new(pos.0 * affect, pos.1 * affect)), label);
+    ui.add(label);
+    // ui.put(Rect::from_pos(Pos2::new(pos.0 * affect, pos.1 * affect)), label);
+    // let type_out = &text[0..text.len()];
+    // let label = Label::new(simple_text(&type_out, size * affect)).selectable(false).extend();
+    // ui.put(Rect::from_pos(Pos2::new(pos.0 * affect, pos.1 * affect)), label);
 }
