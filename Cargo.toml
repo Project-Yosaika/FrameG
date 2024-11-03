@@ -8,7 +8,6 @@ name = "frameg"
 path = "src/lib.rs"
 
 [dependencies]
-eframe = "0.29.1"
-egui_extras = { version = "0.29.1", features = ["default", "all_loaders"] }
+iced = "0.13.1"
 ron = "0.8.1"
 serde = { version = "1.0.210", features = ["derive"] }
