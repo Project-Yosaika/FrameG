@@ -1,443 +1,120 @@
-use std::borrow::Cow;
+use std::borrow::{Borrow, Cow};
 use std::collections::HashMap;
 use std::fs::{self, File};
 use std::io::{Read, Write};
-use std::time;
 
-use eframe::*;
-use eframe::egui::*;
-use frameg::{Character, StoryController};
-use frameg::util::{area, bg_uri, character_uri, create_button, create_slider, image, show_text, simple_text, type_text, ui_image, ui_uri};
-use frameg::{Config, FramegEntry, Story, StoryComponent, WindowScale};
+use frameg::{Config, FramegEntry, GameMessage, Story, StoryComponent, WindowScale};
+use iced::application::{Update, View};
+use iced::widget::{center, column};
+use iced::{window, Element, Renderer, Task, Theme};
 use ron::de::from_reader;
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum GameStates {
-    MainMenu,
-    Gallery,
-    Settings,
-    SelectingSaved,
-    SelectingStory,
-    History,
-    InGame
-}
 
 fn get_resource(file_path: &str) -> String {
     format!("{}/resources/{}", env!("CARGO_MANIFEST_DIR"), file_path)
 }
 
-fn main() -> Result<(), Error> {
-    if File::open(format!("{}/config.ron", env!("CARGO_MANIFEST_DIR"))).is_err() {
-        let new_config = Config {
-            character_volume: 70,
-            sound_effect_volume: 50,
-            music_volume: 100,
-            text_playback_speed: 60,
-            window_scale: WindowScale::FullScreen,
-        };
-        let data = ron::to_string(&new_config).expect("Serialization config failed");
+fn main() -> iced::Result {
+    iced::application("Test", FramegInstance::update, FramegInstance::view).run()
+}
 
-        let mut new_config = File::create(format!("{}/config.ron", env!("CARGO_MANIFEST_DIR"))).expect("Failed to create config");
+struct FramegInstance {
+    entry: FramegEntry,
+    config: Config,
+    stories: Vec<Story>,
+    rendering_screen_name: String
+}
 
-        write!(new_config, "{}", data).expect("Write config failed");
-    }
+impl Default for FramegInstance {
+    fn default() -> Self {
+        if File::open(format!("{}/config.ron", env!("CARGO_MANIFEST_DIR"))).is_err() {
+            let new_config = Config {
+                character_volume: 70,
+                sound_effect_volume: 50,
+                music_volume: 100,
+                text_playback_speed: 60,
+                window_scale: WindowScale::FullScreen,
+            };
+            let data = ron::to_string(&new_config).expect("Serialization config failed");
     
-    let input_path = get_resource("entry.ron");
-    let stories_path = get_resource("stories/");
-
-    let file = File::open(input_path).expect("Failed opening file");
-    let config = File::open(format!("{}/config.ron", env!("CARGO_MANIFEST_DIR"))).expect("Failed to read config");
-    let mut stories = Vec::new();
-
-    let config_file: Config = match from_reader(config) {
-        Ok(x) => x,
-        Err(e) => {
-            println!("Failed to load your config: {}", e);
-
-            std::process::exit(1);
+            let mut new_config = File::create(format!("{}/config.ron", env!("CARGO_MANIFEST_DIR"))).expect("Failed to create config");
+    
+            write!(new_config, "{}", data).expect("Write config failed");
         }
-    };
-
-    let entry: FramegEntry = match from_reader(file) {
-        Ok(x) => x,
-        Err(e) => {
-            println!("Failed to load your entry: {}", e);
-
-            std::process::exit(1);
-        }
-    };
-
-    fs::read_dir(stories_path).unwrap().for_each(|story| {
-        let s = story.unwrap().path();
-        let s = File::open(s);
-        let s: Story = match from_reader(s.unwrap()) {
+        
+        let input_path = get_resource("entry.ron");
+        
+    
+        let file = File::open(input_path).expect("Failed opening file");
+        let config = File::open(format!("{}/config.ron", env!("CARGO_MANIFEST_DIR"))).expect("Failed to read config");
+        
+    
+        let config_file: Config = match from_reader(config) {
             Ok(x) => x,
             Err(e) => {
-                println!("Failed to load story: {}", e);
+                println!("Failed to load your config: {}", e);
     
                 std::process::exit(1);
             }
         };
-        stories.push(s);
-    });
-
-    let mut native_options = eframe::NativeOptions::default();
-    native_options.centered = true;
-
-    eframe::run_native(&entry.name, native_options, Box::new(|cc| Ok(Box::new(FramegInstance::new(cc, &entry, config_file, stories)))))
+    
+        let entry: FramegEntry = match from_reader(file) {
+            Ok(x) => x,
+            Err(e) => {
+                println!("Failed to load your entry: {}", e);
+    
+                std::process::exit(1);
+            }
+        };
+    
+        FramegInstance::new(entry, config_file)
+    }
 }
 
-struct FramegInstance<'a> {
-    entry: &'a FramegEntry,
-    config: Config,
-    stories: Vec<Story>,
-    state: GameStates,
-    zoom_effect: f32,
-    read_process: usize,
-    text_play_process: f32,
-    character_drawer: HashMap<usize, Character>,
-    bg_drawer: HashMap<usize, String>
-}
+impl FramegInstance {
+    fn update(&mut self, message: GameMessage) -> Task<GameMessage>{
+        match message {
+            GameMessage::Exit => window::get_latest().and_then(window::close),
+            GameMessage::Screen { id } => {
+                self.rendering_screen_name = id;
+                Task::none()
+            },
+        }
+    }
+    
+    fn view(&self) -> Element<GameMessage> {
+        let content = iced::widget::column![];
 
-impl<'a> FramegInstance<'a> {
-    fn new(cc: &eframe::CreationContext<'_>, entry: &'a FramegEntry, config: Config, stories: Vec<Story>) -> Self {
-        cc.egui_ctx.set_theme(Theme::Light);
-        egui_extras::install_image_loaders(&cc.egui_ctx);
+        center(content).into()   
+    }
 
-        Self {
+    fn new(entry: FramegEntry, config: Config) -> FramegInstance {
+        let stories_path = get_resource("stories/");
+        let mut stories = Vec::new();
+    
+        fs::read_dir(stories_path).unwrap_or_else(|o| {
+            panic!("{}", o)
+        }).for_each(|story| {
+            story.iter().for_each(|f| {
+                let s = f.path();
+                let s = File::open(s);
+                let s: Story = match from_reader(s.unwrap()) {
+                    Ok(x) => x,
+                    Err(e) => {
+                        println!("Failed to load story: {}", e);
+            
+                        std::process::exit(1);
+                    }
+                };
+                stories.push(s);
+            });
+        });
+
+        FramegInstance {
             entry,
             config,
             stories,
-            state: GameStates::MainMenu,
-            zoom_effect: 1.0,
-            read_process: 0,
-            text_play_process: 0.0,
-            character_drawer: HashMap::default(),
-            bg_drawer: HashMap::default()
+            rendering_screen_name: String::default()
         }
     }
 }
 
-impl<'a> eframe::App for FramegInstance<'a> {
-    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
-        match self.config.window_scale {
-            WindowScale::Small => {
-                ctx.send_viewport_cmd(ViewportCommand::Fullscreen(false));
-                ctx.send_viewport_cmd(ViewportCommand::InnerSize(Vec2::new(400.0, 225.0)));
-                self.zoom_effect = 0.25;
-            },
-            WindowScale::Big => {
-                ctx.send_viewport_cmd(ViewportCommand::Fullscreen(false));
-                ctx.send_viewport_cmd(ViewportCommand::InnerSize(Vec2::new(800.0, 450.0)));
-                self.zoom_effect = 0.5;
-            },
-            WindowScale::Large => {
-                ctx.send_viewport_cmd(ViewportCommand::Fullscreen(false));
-                ctx.send_viewport_cmd(ViewportCommand::InnerSize(Vec2::new(1600.0, 900.0)));
-                self.zoom_effect = 1.0;
-            },
-            WindowScale::FullScreen => {
-                ctx.send_viewport_cmd(ViewportCommand::Fullscreen(true));
-                self.zoom_effect = 1.0;
-            },
-        }
-        egui::CentralPanel::default().show(ctx, |ui| {
-            match self.state {
-                GameStates::MainMenu => {
-                    let new_game = create_button(
-                        simple_text("New Game", self.entry.ui.main_menu.new_text_size * self.zoom_effect),
-                        ui, 
-                        (
-                            self.entry.ui.main_menu.new_button_position.0 * self.zoom_effect,
-                            self.entry.ui.main_menu.new_button_position.1 * self.zoom_effect
-                        ),
-                        (
-                            self.entry.ui.main_menu.new_button_scale.0 * self.zoom_effect,
-                            self.entry.ui.main_menu.new_button_scale.1 * self.zoom_effect
-                        )
-                    );
-                    let continue_game = create_button(
-                        simple_text("Continue", self.entry.ui.main_menu.continue_text_size * self.zoom_effect),
-                        ui, 
-                        (
-                            self.entry.ui.main_menu.continue_button_position.0 * self.zoom_effect,
-                            self.entry.ui.main_menu.continue_button_position.1 * self.zoom_effect
-                        ), 
-                        (
-                            self.entry.ui.main_menu.continue_button_scale.0 * self.zoom_effect,
-                            self.entry.ui.main_menu.continue_button_scale.1 * self.zoom_effect
-                        )
-                    );
-                    let gallery = create_button(
-                        simple_text("Gallery", self.entry.ui.main_menu.gallery_text_size * self.zoom_effect),
-                        ui, 
-                        (
-                            self.entry.ui.main_menu.gallery_button_position.0 * self.zoom_effect,
-                            self.entry.ui.main_menu.gallery_button_position.1 * self.zoom_effect
-                        ), 
-                        (
-                            self.entry.ui.main_menu.gallery_button_scale.0 * self.zoom_effect,
-                            self.entry.ui.main_menu.gallery_button_scale.1 * self.zoom_effect
-                        )
-                    );
-                    let settings = create_button(
-                        simple_text("Settings", self.entry.ui.main_menu.setting_text_size * self.zoom_effect),
-                        ui,
-                        (
-                            self.entry.ui.main_menu.setting_button_position. 0* self.zoom_effect,
-                            self.entry.ui.main_menu.setting_button_position.1 * self.zoom_effect
-                        ), 
-                        (
-                            self.entry.ui.main_menu.setting_button_scale.0 * self.zoom_effect,
-                            self.entry.ui.main_menu.setting_button_scale.1 * self.zoom_effect
-                        )
-                    );
-                    let quit = create_button(
-                        simple_text("Quit", self.entry.ui.main_menu.quit_text_size * self.zoom_effect),
-                        ui, 
-                        (self.entry.ui.main_menu.quit_button_position.0 * self.zoom_effect,
-                            self.entry.ui.main_menu.quit_button_position.1 * self.zoom_effect
-                        ), 
-                        (
-                            self.entry.ui.main_menu.quit_button_scale.0 * self.zoom_effect,
-                            self.entry.ui.main_menu.quit_button_scale.1 * self.zoom_effect
-                        )
-                    );
-
-                    if new_game.clicked() {
-                        if self.entry.has_multi_story {
-                            self.state = GameStates::SelectingStory
-                        } else {
-                            self.state = GameStates::InGame
-                        }
-                    }
-                    if continue_game.clicked() {
-                        self.state = GameStates::SelectingSaved
-                    }
-                    if gallery.clicked() {
-                        self.state = GameStates::Gallery
-                    }
-                    if settings.clicked() {
-                        self.state = GameStates::Settings
-                    }
-                    if quit.clicked() {
-                        ctx.send_viewport_cmd(ViewportCommand::Close);
-                    }
-                },
-                GameStates::Gallery => todo!(),
-                GameStates::Settings => {
-                    ui.label("Screen size:");
-                    
-                    ui.spacing_mut().combo_width = self.entry.ui.settings_menu.window_scale_button_scale.0;
-                    ui.spacing_mut().combo_height = self.entry.ui.settings_menu.window_scale_button_scale.1;
-                    
-                    ComboBox::from_label("")
-                        .selected_text(format!("{:?}", self.config.window_scale))
-                        .show_ui(ui, |ui| {
-                            ui.selectable_value(&mut self.config.window_scale, WindowScale::Small, "400 * 225");
-                            ui.selectable_value(&mut self.config.window_scale, WindowScale::Big, "800 * 450");
-                            ui.selectable_value(&mut self.config.window_scale, WindowScale::Large, "1600 * 900");
-                            ui.selectable_value(&mut self.config.window_scale, WindowScale::FullScreen, "Full Screen");
-                        }
-                    );
-                    create_slider(
-                        ctx,
-                        "character_volume".to_string(), 
-                        (self.entry.ui.settings_menu.character_volume_position.0 * self.zoom_effect,
-                            self.entry.ui.settings_menu.character_volume_position.0 * self.zoom_effect
-                        ),
-                        (self.entry.ui.settings_menu.character_volume_scale.0 * self.zoom_effect,
-                            self.entry.ui.settings_menu.character_volume_scale.0 * self.zoom_effect
-                        ), 
-                        &mut self.config.character_volume
-                    );
-                    create_slider(
-                        ctx, 
-                        "sound_effect".to_string(),
-                        (self.entry.ui.settings_menu.sound_effect_volume_position.0 * self.zoom_effect,
-                            self.entry.ui.settings_menu.sound_effect_volume_position.0 * self.zoom_effect
-                        ),
-                        (self.entry.ui.settings_menu.sound_effect_volume_scale.0 * self.zoom_effect,
-                            self.entry.ui.settings_menu.sound_effect_volume_scale.0 * self.zoom_effect
-                        ), 
-                        &mut self.config.sound_effect_volume
-                    );
-                    create_slider(
-                        ctx,
-                        "text_playback_speed".to_string(), 
-                        (self.entry.ui.settings_menu.text_playback_speed_position.0 * self.zoom_effect,
-                            self.entry.ui.settings_menu.text_playback_speed_position.0 * self.zoom_effect
-                        ),
-                        (self.entry.ui.settings_menu.text_playback_speed_scale.0 * self.zoom_effect,
-                            self.entry.ui.settings_menu.text_playback_speed_scale.0 * self.zoom_effect
-                        ), 
-                        &mut self.config.text_playback_speed
-                    );
-                    create_slider(
-                        ctx,
-                        "music_volume".to_string(), 
-                        (self.entry.ui.settings_menu.music_volume_scale.0 * self.zoom_effect,
-                            self.entry.ui.settings_menu.music_volume_scale.0 * self.zoom_effect
-                        ),
-                        (self.entry.ui.settings_menu.music_volume_scale.0 * self.zoom_effect,
-                            self.entry.ui.settings_menu.music_volume_scale.0 * self.zoom_effect
-                        ), 
-                        &mut self.config.character_volume
-                    );
-                    let reset = create_button(
-                        simple_text("Reset", self.entry.ui.settings_menu.reset_button_text_scale * self.zoom_effect), 
-                        ui, 
-                        (
-                            self.entry.ui.settings_menu.reset_button_position.0 * self.zoom_effect,
-                            self.entry.ui.settings_menu.reset_button_position.1 * self.zoom_effect
-                        ),
-                        (
-                            self.entry.ui.settings_menu.reset_button_scale.0 * self.zoom_effect,
-                            self.entry.ui.settings_menu.reset_button_scale.1 * self.zoom_effect
-                        )
-                    );
-                    let back = create_button(
-                        simple_text("Back", self.entry.ui.settings_menu.back_button_text_scale * self.zoom_effect), 
-                        ui,
-                        (
-                            self.entry.ui.settings_menu.back_button_position.0 * self.zoom_effect,
-                            self.entry.ui.settings_menu.back_button_position.1 * self.zoom_effect
-                        ),
-                        (
-                            self.entry.ui.settings_menu.back_button_scale.0 * self.zoom_effect,
-                            self.entry.ui.settings_menu.back_button_scale.1 * self.zoom_effect
-                        )
-                    );
-
-                    let data = ron::to_string(&self.config).expect("Serialization config failed");    
-                    let mut new_config = File::create(format!("{}/config.ron", env!("CARGO_MANIFEST_DIR"))).expect("Failed to create config");
-                    write!(new_config, "{}", data).expect("Write config failed");
-
-                    if reset.clicked() {
-                        self.config = Config {
-                            character_volume: 70,
-                            sound_effect_volume: 50,
-                            music_volume: 100,
-                            text_playback_speed: 60,
-                            window_scale: WindowScale::FullScreen
-                        };
-                        
-                        let data = ron::to_string(&self.config).expect("Serialization config failed");
-                        
-                        let mut new_config = File::create(format!("{}/config.ron", env!("CARGO_MANIFEST_DIR"))).expect("Failed to create config");
-                        
-                        write!(new_config, "{}", data).expect("Write config failed");
-                    }
-                    if back.clicked() {
-                        self.state = GameStates::MainMenu
-                    }
-                },
-                GameStates::SelectingSaved => todo!(),
-                GameStates::SelectingStory => todo!(),
-                GameStates::History => todo!(),
-                GameStates::InGame => {
-                    self.text_play_process += 0.1 * (self.config.text_playback_speed as f32 / 100.0);
-
-                    if ctx.input(|i| i.key_pressed(Key::Enter)) {
-                        self.read_process += 1;
-                        self.text_play_process = 0.0;
-                        self.character_drawer = self.character_drawer.iter().filter_map(|m| {
-                            if m.0 > &0 {
-                                Some((m.0 - 1, m.1.clone()))
-                            } else {
-                                None
-                            }
-                        }).collect();
-                        self.bg_drawer = self.bg_drawer.iter().filter_map(|m| {
-                            if m.0 > &0 {
-                                Some((m.0 - 1, m.1.clone()))
-                            } else {
-                                None
-                            }
-                        }).collect();
-                    }
-
-                    area(
-                        ctx,
-                        &ui_uri("dialog_box"),
-                        self.entry.ui.in_game_hud.dialog_box_position,
-                        self.entry.ui.in_game_hud.dialog_box_scale,
-                        self.zoom_effect,
-                        Order::Foreground
-                    );
-
-                    self.stories.iter().for_each(|single_story| {
-                        let controllers: Vec<_> = single_story.content.keys().collect();
-
-                        controllers.iter().for_each(|controller| {
-                            if controller.1 == self.read_process {
-                                single_story.content.get(&controller).iter().for_each(|component| {
-                                    component.iter().for_each(|part| {
-                                        if controller.0.is_some() {
-                                            let c = controller.0.as_ref().unwrap();
-                                            match c {
-                                                StoryController::Branch(choice_list) => {
-                                                    let choices: Vec<_> = choice_list.iter().filter(|f| f.is_some()).map(|m| m.clone().unwrap()).collect();
-                                                    for i in 0..=choices.len() - 1 {
-                                                        ui.label(choices.get(i).unwrap().text.clone());
-                                                    }
-                                                },
-                                                StoryController::Next(_) => todo!(),
-                                                StoryController::If(story_lock, next_story) => todo!(),
-                                                StoryController::End => {
-                                                    self.state = GameStates::MainMenu
-                                                },
-                                            }
-                                        }
-    
-                                        match part {
-                                            StoryComponent::Bg(pointer, last) => {
-                                                self.bg_drawer.insert(*last, pointer.to_string());
-                                            },
-                                            StoryComponent::Cg(_, _) => todo!(),
-                                            StoryComponent::ScreenFX(_, _) => todo!(),
-                                            StoryComponent::Character(character, last) => {
-                                                self.character_drawer.insert(*last, character.clone());
-                                            },
-                                            StoryComponent::SimpleText(text, said_by) => {
-                                                show_text(
-                                                    ui,
-                                                    &said_by.name,
-                                                    self.entry.ui.in_game_hud.character_name_size,
-                                                    self.entry.ui.in_game_hud.character_name_position,
-                                                    self.zoom_effect,
-                                                    true
-                                                );
-                                                Area::new("texts".into()).default_pos(self.entry.ui.in_game_hud.dialog_text_position).order(Order::TOP).show(ctx, |ui| {
-                                                    type_text(
-                                                        ui,
-                                                        &text,
-                                                        self.entry.ui.in_game_hud.dialog_text_scale,
-                                                        self.zoom_effect,
-                                                        self.text_play_process as usize
-                                                    );
-                                                });
-                                            },
-                                        }
-                                    });
-
-                                    self.bg_drawer.iter().for_each(|c| {
-                                        if c.0 > &0 {
-                                            Image::new(image(&bg_uri(c.1))).paint_at(ui, Rect::from_min_size(Pos2::new(0.0, 0.0), Vec2::new(1600.0 * self.zoom_effect, 900.0 * self.zoom_effect)));
-                                        }
-                                    });
-                                    self.character_drawer.iter().for_each(|c| {
-                                        if c.0 > &0 {
-                                            let character = c.1;
-                                            Image::new(image(&character_uri(&character.name, &character.face))).paint_at(ui, Rect::from_min_size(Pos2::new(character.pos.0 * self.zoom_effect, character.pos.1 * self.zoom_effect),Vec2::new(character.scale.0 * self.zoom_effect, character.scale.1 * self.zoom_effect)));
-                                        }
-                                    });
-                                });
-                            }
-                        });
-                    });
-                }
-            }
-        });
-    }
-}

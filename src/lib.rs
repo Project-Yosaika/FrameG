@@ -1,7 +1,16 @@
 pub mod util;
 
-use eframe::egui::{ahash::HashMap, WidgetText};
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
+
+    #[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum GameMessage {
+    Exit,
+    Screen {
+        id: String
+    }
+}
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Config {
@@ -16,66 +25,29 @@ pub struct Config {
 pub struct FramegEntry {
     pub name: String,
     pub has_multi_story: bool,
-    pub ui: Ui
+    pub screen: Screen
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Ui {
-    pub main_menu: MainMenu,
-    pub settings_menu: SettingsMenu,
-    pub in_game_hud: InGameHud
+pub struct Screen {
+    pub widget: HashMap<String, Vec<SerdableWidget>>
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct MainMenu {
-    pub new_button_position: (f32, f32),
-    pub continue_button_position: (f32, f32),
-    pub gallery_button_position: (f32, f32),
-    pub setting_button_position: (f32, f32),
-    pub quit_button_position: (f32, f32),
-    pub new_button_scale: (f32, f32),
-    pub continue_button_scale: (f32, f32),
-    pub gallery_button_scale: (f32, f32),
-    pub setting_button_scale: (f32, f32),
-    pub quit_button_scale: (f32, f32),
-    pub new_text_size: f32,
-    pub continue_text_size: f32,
-    pub gallery_text_size: f32,
-    pub setting_text_size: f32,
-    pub quit_text_size: f32
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct SettingsMenu {
-    pub character_volume_position: (f32, f32),
-    pub sound_effect_volume_position: (f32, f32),
-    pub music_volume_position: (f32, f32),
-    pub text_playback_speed_position: (f32, f32),
-    pub character_volume_scale: (f32, f32),
-    pub sound_effect_volume_scale: (f32, f32),
-    pub music_volume_scale: (f32, f32),
-    pub text_playback_speed_scale: (f32, f32),
-    pub window_scale: WindowScale,
-    pub window_scale_button_position: (f32, f32),
-    pub window_scale_button_scale: (f32, f32),
-    pub reset_button_position: (f32, f32),
-    pub reset_button_scale: (f32, f32),
-    pub reset_button_text_scale: f32,
-    pub back_button_position: (f32, f32),
-    pub back_button_scale: (f32, f32),
-    pub back_button_text_scale: f32
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct InGameHud {
-    pub dialog_box_position: (f32, f32),
-    pub dialog_box_scale: (f32, f32),
-    pub dialog_text_position: (f32, f32),
-    pub dialog_text_scale: f32,
-    pub character_name_position: (f32, f32),
-    pub character_name_size: f32,
-    pub save_button_position: (f32, f32),
-    pub history_button_position: (f32, f32),
+pub enum SerdableWidget {
+    Button {
+        pos: (i32, i32),
+        scale: (i32, i32)
+    },
+    Slider {
+        pos: (i32, i32),
+        scale: (i32, i32)
+    },
+    Image {
+        path: String,
+        pos: (i32, i32),
+        scale: (i32, i32)
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]

@@ -8,6 +8,6 @@ name = "frameg"
 path = "src/lib.rs"
 
 [dependencies]
-iced = "0.13.1"
+iced = { version = "0.13.1", features = ["image"]}
 ron = "0.8.1"
 serde = { version = "1.0.210", features = ["derive"] }
