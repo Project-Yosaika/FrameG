@@ -4,7 +4,14 @@ FramegEntry(
     screen: Screen(
         widget: {
             "main_menu": [
-
+                Slider(
+                    pos: (200, 300),
+                    scale: (200, 100),
+                    max: 100,
+                    min: 0,
+                    value: 50,
+                    id: "slider"
+                )
             ]
         }
     )

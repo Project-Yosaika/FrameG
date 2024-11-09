@@ -4,11 +4,15 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
-    #[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum GameMessage {
     Exit,
     Screen {
         id: String
+    },
+    ConfigValueChange {
+        id: String,
+        value: i32
     }
 }
 
@@ -37,11 +41,17 @@ pub struct Screen {
 pub enum SerdableWidget {
     Button {
         pos: (i32, i32),
-        scale: (i32, i32)
+        scale: (f32, f32),
+        action: GameMessage,
+        text: String
     },
     Slider {
         pos: (i32, i32),
-        scale: (i32, i32)
+        scale: (f32, f32),
+        max: i32,
+        min: i32,
+        value: i32,
+        id: String
     },
     Image {
         path: String,

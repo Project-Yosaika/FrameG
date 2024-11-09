@@ -3,9 +3,10 @@ use std::collections::HashMap;
 use std::fs::{self, File};
 use std::io::{Read, Write};
 
-use frameg::{Config, FramegEntry, GameMessage, Story, StoryComponent, WindowScale};
+use frameg::{Config, FramegEntry, GameMessage, SerdableWidget, Story, StoryComponent, WindowScale};
 use iced::application::{Update, View};
-use iced::widget::{center, column};
+use iced::widget::image::Handle;
+use iced::widget::{button, center, column, container, slider, Button, Image, Slider, Text};
 use iced::{window, Element, Renderer, Task, Theme};
 use ron::de::from_reader;
 
@@ -17,11 +18,14 @@ fn main() -> iced::Result {
     iced::application("Test", FramegInstance::update, FramegInstance::view).run()
 }
 
+struct GameState {
+    rendering_screen_name: String
+}
 struct FramegInstance {
     entry: FramegEntry,
     config: Config,
     stories: Vec<Story>,
-    rendering_screen_name: String
+    state: GameState
 }
 
 impl Default for FramegInstance {
@@ -75,16 +79,59 @@ impl FramegInstance {
         match message {
             GameMessage::Exit => window::get_latest().and_then(window::close),
             GameMessage::Screen { id } => {
-                self.rendering_screen_name = id;
+                self.state.rendering_screen_name = id;
+                Task::none()
+            },
+            GameMessage::ConfigValueChange { id, value } => {
+                
                 Task::none()
             },
         }
     }
     
     fn view(&self) -> Element<GameMessage> {
-        let content = iced::widget::column![];
+        let mut content: iced::widget::Column<'_, GameMessage, Theme, Renderer> = column![];
 
-        center(content).into()   
+        let screen = match self.entry.screen.widget.get(&self.state.rendering_screen_name) {
+            Some(value) => value,
+            None => panic!("Your screen is non-existing"),
+        };
+
+        for widget in screen {
+            match widget {
+                SerdableWidget::Button { pos, scale, action, text } => {
+                    // let button = 
+                    // column![
+                    //     button(text.as_str())
+                    //     .width(scale.0)
+                    //     .height(scale.1)
+                    //     .on_press(action)
+                    // ];
+
+                    // content = content.push(button);
+                },
+                SerdableWidget::Slider { pos, scale, value, id, max, min } => {
+                    let slider: iced::widget::Column<'_, GameMessage, Theme, Renderer> = column![
+                        container(
+                            slider(
+                                min.clone()..=max.clone(), 
+                                value.clone(), 
+                                |changed| GameMessage::ConfigValueChange { id: id.to_string(), value: changed }
+                            )
+                            .width(scale.0)
+                            .height(scale.1)
+                        )
+                    ];
+
+                    content = content.push(slider);
+                },
+                _ => {
+                    
+                }
+            }
+        }
+
+        center(content).into()
     }
 
     fn new(entry: FramegEntry, config: Config) -> FramegInstance {
@@ -109,11 +156,15 @@ impl FramegInstance {
             });
         });
 
+        let state = GameState {
+            rendering_screen_name: String::from("main_menu")
+        };
+
         FramegInstance {
             entry,
             config,
             stories,
-            rendering_screen_name: String::default()
+            state
         }
     }
 }
