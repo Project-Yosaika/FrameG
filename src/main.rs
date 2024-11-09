@@ -15,16 +15,14 @@ fn get_resource(file_path: &str) -> String {
 }
 
 fn main() -> iced::Result {
-    iced::application("Test", FramegInstance::update, FramegInstance::view).run()
+    iced::application("Frameg Runner", FramegInstance::update, FramegInstance::view).run()
 }
-
 struct GameState {
     rendering_screen_name: String
 }
 struct FramegInstance {
     entry: FramegEntry,
     config: Config,
-    stories: Vec<Story>,
     state: GameState
 }
 
@@ -135,26 +133,6 @@ impl FramegInstance {
     }
 
     fn new(entry: FramegEntry, config: Config) -> FramegInstance {
-        let stories_path = get_resource("stories/");
-        let mut stories = Vec::new();
-    
-        fs::read_dir(stories_path).unwrap_or_else(|o| {
-            panic!("{}", o)
-        }).for_each(|story| {
-            story.iter().for_each(|f| {
-                let s = f.path();
-                let s = File::open(s);
-                let s: Story = match from_reader(s.unwrap()) {
-                    Ok(x) => x,
-                    Err(e) => {
-                        println!("Failed to load story: {}", e);
-            
-                        std::process::exit(1);
-                    }
-                };
-                stories.push(s);
-            });
-        });
 
         let state = GameState {
             rendering_screen_name: String::from("main_menu")
@@ -163,7 +141,6 @@ impl FramegInstance {
         FramegInstance {
             entry,
             config,
-            stories,
             state
         }
     }
