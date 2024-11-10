@@ -23,13 +23,7 @@ pub struct Config {
     pub music_volume: i32,
     pub text_playback_speed: i32,
     pub window_scale: WindowScale
-    // pub components: HashMap<String, ConfigComponent>
 }
-
-// #[derive(Serialize, Deserialize, Debug)]
-// pub enum ConfigComponent {
-
-// }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct FramegEntry {
@@ -54,17 +48,17 @@ pub struct Screen {
 #[derive(Serialize, Deserialize, Debug)]
 pub enum SerdableWidget {
     Button {
-        pos: (i32, i32),
+        pos: (f32, f32),
         scale: (f32, f32),
         action: GameMessage,
         text: String
     },
     Slider {
-        pos: (i32, i32),
+        pos: (f32, f32),
         scale: (f32, f32),
         max: i32,
         min: i32,
-        value: i32,
+        value_id: String,
         id: String
     },
     Image {

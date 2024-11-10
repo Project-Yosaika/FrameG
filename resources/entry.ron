@@ -1,16 +1,24 @@
 FramegEntry(
     name: "Test for YOU",
-    has_multi_story: false,
+    stories: {
+
+    },
     screen: Screen(
         widget: {
             "main_menu": [
+                Button(
+                    pos: (100.0, 100.0),
+                    scale: (200.0, 100.0),
+                    action: Exit,
+                    text: "exit"
+                ),
                 Slider(
-                    pos: (200, 300),
-                    scale: (200, 100),
+                    pos: (500, 500),
+                    scale: (400, 300),
                     max: 100,
                     min: 0,
-                    value: 50,
-                    id: "slider"
+                    value_id: "character_volume",
+                    id: "character_volume"
                 )
             ]
         }

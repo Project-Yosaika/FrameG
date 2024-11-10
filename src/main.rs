@@ -48,7 +48,6 @@ impl Default for FramegInstance {
     
         let file = File::open(input_path).expect("Failed opening file");
         let config = File::open(format!("{}/config.ron", env!("CARGO_MANIFEST_DIR"))).expect("Failed to read config");
-        
     
         let config_file: Config = match from_reader(config) {
             Ok(x) => x,
@@ -73,7 +72,18 @@ impl Default for FramegInstance {
 }
 
 impl FramegInstance {
-    fn update(&mut self, message: GameMessage) -> Task<GameMessage>{
+    fn update(&mut self, message: GameMessage) -> Task<GameMessage> {
+        let config = File::open(format!("{}/config.ron", env!("CARGO_MANIFEST_DIR"))).expect("Failed to read config");
+
+        self.config = match from_reader(config) {
+            Ok(x) => x,
+            Err(e) => {
+                println!("Failed to load your config: {}", e);
+    
+                std::process::exit(1);
+            }
+        };
+        
         match message {
             GameMessage::Exit => window::get_latest().and_then(window::close),
             GameMessage::Screen { id } => {
@@ -81,6 +91,15 @@ impl FramegInstance {
                 Task::none()
             },
             GameMessage::ConfigValueChange { id, value } => {
+                match id.as_str() {
+                    "character_volume" => {
+                        self.config.character_volume = value
+                    },
+                    _ => panic!("non-existing config object")
+                }
+                let data = ron::to_string(&self.config).expect("Serialization config failed");    
+                let mut new_config = File::create(format!("{}/config.ron", env!("CARGO_MANIFEST_DIR"))).expect("Failed to create config");
+                write!(new_config, "{}", data).expect("Write config failed");
                 
                 Task::none()
             },
@@ -98,26 +117,38 @@ impl FramegInstance {
         for widget in screen {
             match widget {
                 SerdableWidget::Button { pos, scale, action, text } => {
-                    // let button = 
-                    // column![
-                    //     button(text.as_str())
-                    //     .width(scale.0)
-                    //     .height(scale.1)
-                    //     .on_press(action)
-                    // ];
+                    let button = column![
+                        container(
+                            button(text.as_str())
+                                .width(scale.0)
+                                .height(scale.1)
+                                .on_press(action.clone())
+                        )
+                    ];
 
-                    // content = content.push(button);
+                    content = content.push(button);
                 },
-                SerdableWidget::Slider { pos, scale, value, id, max, min } => {
-                    let slider: iced::widget::Column<'_, GameMessage, Theme, Renderer> = column![
+                SerdableWidget::Slider { pos, scale, value_id, id, max, min } => {
+                    let value = match value_id.as_str() {
+                        "character_volume" => {
+                            self.config.character_volume
+                        },
+                        _ => {
+                            panic!("non-existing config value");
+                        }
+                    };
+                    let slider = column![
                         container(
                             slider(
                                 min.clone()..=max.clone(), 
-                                value.clone(), 
+                                value,
                                 |changed| GameMessage::ConfigValueChange { id: id.to_string(), value: changed }
                             )
                             .width(scale.0)
                             .height(scale.1)
+                            .default(70)
+                            .shift_step(10)
+                            .step(1)
                         )
                     ];
 
@@ -133,7 +164,6 @@ impl FramegInstance {
     }
 
     fn new(entry: FramegEntry, config: Config) -> FramegInstance {
-
         let state = GameState {
             rendering_screen_name: String::from("main_menu")
         };
